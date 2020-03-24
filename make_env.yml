@@ -10,5 +10,6 @@ dependencies:
 - pip:
   - ipython
   - scipy
+  - pandas
   - matplotlib
   - alive_progress
