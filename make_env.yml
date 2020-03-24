@@ -1,0 +1,14 @@
+name: infomemes
+channels:
+- defaults
+- anaconda
+- conda-forge
+dependencies:
+- python=3.7
+- pip
+- numpy
+- pip:
+  - ipython
+  - scipy
+  - matplotlib
+  - alive_progress
