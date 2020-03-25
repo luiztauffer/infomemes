@@ -1,11 +1,11 @@
-from classes import Simulation
-from to_from_file import save_light_data
+from infomemes.classes import Simulation
+from infomemes.to_from_file import save_light_data
 
 import concurrent.futures
 import multiprocessing
 
 
-# Simulation configurations
+# Default simulation configurations
 default_config = {
     # media
     'n_media': 100,
@@ -18,8 +18,8 @@ default_config = {
 }
 
 
-# Main routine
-def main(sim_config, n_steps=100, n_sims=1, proc_id=0, verbose=0):
+# Simulation routine
+def sim_routine(sim_config, n_steps=100, n_sims=1, proc_id=0, verbose=0):
     try:
         for i in range(n_sims):
             # Set up simulation
@@ -58,15 +58,15 @@ def multiprocessing_organizer(sim_config, n_steps=100, n_sims=1, n_procs=2, verb
                 'proc_id': i,
                 'verbose': verbose
             }
-            p = executor.submit(main, **kwargs)
+            p = executor.submit(sim_routine, **kwargs)
             procs_list.append(p)
 
         for p in concurrent.futures.as_completed(procs_list):
             print(p.result())
 
 
-# Called from command line
-if __name__ == '__main__':
+# Parse arguments and call routines
+def main():
     import argparse
 
     parser = argparse.ArgumentParser(description='Simulates the media evolution game')
@@ -108,6 +108,11 @@ if __name__ == '__main__':
     verbose = int(args.verbose)
 
     if n_procs == 1:
-        main(sim_config=sim_config, n_steps=n_steps, n_sims=n_sims, verbose=verbose)
-    else:
+        sim_routine(sim_config=sim_config, n_steps=n_steps, n_sims=n_sims, verbose=verbose)
+    elif n_procs > 1:
         multiprocessing_organizer(sim_config=sim_config, n_steps=n_steps, n_sims=n_sims, n_procs=n_procs, verbose=verbose)
+
+
+# Called from command line
+if __name__ == '__main__':
+    main()

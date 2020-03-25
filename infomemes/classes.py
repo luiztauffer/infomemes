@@ -1,4 +1,4 @@
-from utils import media_color_schema
+from infomemes.utils import media_color_schema
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as sps
@@ -188,9 +188,9 @@ class Simulation():
 
                 # Verbose control
                 if verbose == 0:   # loading bar
-                    msg = 'Process ' + str(proc_id) + '  |  Active Media: ' + str(n_active)
+                    msg = 'Process ' + str(proc_id) + ', Sim ' + str(0) + '  |  Active Media: ' + str(n_active)
                     bar(text=msg)
-                if verbose == 1:  # multithread
+                if verbose == 1:  # multiprocessing
                     if step / n_steps >= percent:
                         print('Process ' + str(proc_id) + ' in ' + str(100 * percent) + '%  |  Active Media: ' + str(n_active))
                         percent += .2
@@ -406,11 +406,11 @@ def check_covariance(cov):
     return cov
 
 
-def up_text():
-    sys.stdout.write('newline title')
+def up():
+    sys.stdout.write('\x1b[1A')
     sys.stdout.flush()
 
 
-def down_text():
+def down():
     sys.stdout.write('\n')
     sys.stdout.flush()
