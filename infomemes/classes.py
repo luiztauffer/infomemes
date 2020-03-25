@@ -130,7 +130,7 @@ class Individual():
 
     def calculate_distance_to_meme(self, meme):
         # Geometric distance
-        dist = np.sqrt((self.x - meme.x)**2 + (self.x - meme.x)**2)
+        dist = np.sqrt((self.x - meme.x)**2 + (self.y - meme.y)**2)
         return (dist, meme.parent)
 
     def update_position(self, consumed_memes):
