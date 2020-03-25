@@ -3,13 +3,15 @@ from infomemes.to_from_file import save_light_data
 
 import concurrent.futures
 import multiprocessing
+import json
 
 
 # Default simulation configurations
 default_config = {
     # media
     'n_media': 100,
-    'media_mpr': 10,
+    'meme_production_rate': 10,
+    'media_reproduction_rate': 1,
     'covariance_punishment': 0.5,
     # individuals
     'n_individuals': 1000,
@@ -74,7 +76,7 @@ def main():
     parser.add_argument(
         "--sim_config",
         default=None,
-        help="JSON file containing simulation configuration."
+        help="Path to JSON file containing simulation configuration."
     )
     parser.add_argument(
         "--n_steps",
@@ -101,7 +103,8 @@ def main():
     if args.sim_config is None:
         sim_config = default_config
     else:
-        sim_config = args.sim_config
+        with open(args.sim_config, 'r') as f:
+            sim_config = json.loads(f.read())
     n_steps = int(args.n_steps)
     n_sims = int(args.n_sims)
     n_procs = int(args.n_procs)

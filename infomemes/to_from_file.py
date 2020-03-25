@@ -11,7 +11,7 @@ def save_light_data(sim, fname):
     cov_x = []
     cov_y = []
     cov_xy = []
-    mpr = []
+    meme_production_rate = []
     for m in sim.all_media:
         if m.active:
             deactivated.append(sim.current_step)
@@ -23,11 +23,11 @@ def save_light_data(sim, fname):
         cov_x.append(m.cov[0, 0])
         cov_y.append(m.cov[1, 1])
         cov_xy.append(m.cov[0, 1])
-        mpr.append(m.mpr)
+        meme_production_rate.append(m.meme_production_rate)
 
     # Arrange data in a DataFrame
-    data = np.array([activated, deactivated, position_x, position_y, cov_x, cov_xy, mpr]).T
-    colnames = ['activated', 'deactivated', 'position_x', 'position_y', 'cov_x', 'cov_xy', 'mpr']
+    data = np.array([activated, deactivated, position_x, position_y, cov_x, cov_y, cov_xy, meme_production_rate]).T
+    colnames = ['activated', 'deactivated', 'position_x', 'position_y', 'cov_x', 'cov_y', 'cov_xy', 'meme_production_rate']
     df = pd.DataFrame(data=data, columns=colnames)
 
     # Simulation metadata

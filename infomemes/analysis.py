@@ -1,24 +1,44 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import json
 
 
-def survival_statistics(sim):
+def survival_statistics(sim, from_file=False):
+    """
+    Basic analysis of a simulation.
+
+    sim: simulation object or josn file.
+    """
     survival_times = []
     position_x = []
     position_y = []
     cov_diagonal = []
     cov_xy = []
     mpr = []
-    for m in sim.all_media:
-        if m.active:
-            survival_times.append(sim.current_step - m.activated)
-        else:
-            survival_times.append(m.deactivated - m.activated)
-        position_x.append(m.x)
-        position_y.append(m.y)
-        cov_diagonal.append(m.cov[0, 0] + m.cov[1, 1])
-        cov_xy.append(m.cov[0, 1])
-        mpr.append(m.mpr)
+    if from_file:
+        with open(sim, 'r') as f:
+            sim = json.loads(f.read())
+        activated = list(sim['data']['activated'].values())
+        deactivated = list(sim['data']['deactivated'].values())
+        survival_times = np.array(deactivated) - np.array(activated)
+        position_x = list(sim['data']['position_x'].values())
+        position_y = list(sim['data']['position_y'].values())
+        cov_x = list(sim['data']['cov_x'].values())
+        cov_y = list(sim['data']['cov_y'].values())
+        cov_diagonal = np.array(cov_x) + np.array(cov_y)
+        cov_xy = list(sim['data']['cov_xy'].values())
+        mpr = list(sim['data']['meme_production_rate'].values())
+    else:
+        for m in sim.all_media:
+            if m.active:
+                survival_times.append(sim.current_step - m.activated)
+            else:
+                survival_times.append(m.deactivated - m.activated)
+            position_x.append(m.x)
+            position_y.append(m.y)
+            cov_diagonal.append(m.cov[0, 0] + m.cov[1, 1])
+            cov_xy.append(m.cov[0, 1])
+            mpr.append(m.meme_production_rate)
 
     max_time = max(survival_times)
     min_time = min(survival_times)

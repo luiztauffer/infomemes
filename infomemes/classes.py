@@ -39,13 +39,13 @@ class Media():
         # Initial budget
         self.budget = 100
         # Meme Producion Rate: memes / time step
-        self.mpr = simulation.media_mpr  # 5
+        self.meme_production_rate = simulation.config['meme_production_rate']  # 5
         # Reward variable
         self.reward = 0
 
     def produce_memes(self):
         # Produces a number of memes
-        n_memes = np.random.poisson(lam=self.mpr)
+        n_memes = np.random.poisson(lam=self.meme_production_rate)
         memes_pos = np.random.multivariate_normal(
             mean=[self.x, self.y],
             cov=self.cov,
@@ -61,7 +61,7 @@ class Media():
         # Reward as a function of distance to meme minus covariance punishment
         # reward = 1 / (100 * distance) - self.simulation.covariance_punishment * self.cov
         reward = 1 / (self.simulation.n_individuals * distance) - \
-                 self.simulation.covariance_punishment * (self.cov[0, 0] + self.cov[1, 1])
+            self.simulation.covariance_punishment * (self.cov[0, 0] + self.cov[1, 1])
         self.reward += max(0, min(1, reward))
         # print(reward)
 
@@ -163,8 +163,8 @@ class Simulation():
         self.config = sim_config
         self.n_individuals = sim_config['n_individuals']
         self.n_media = sim_config['n_media']
-        # Media Memes Production Rate
-        self.media_mpr = sim_config['media_mpr']
+        # Media Reproduction Rate
+        self.media_reproduction_rate = sim_config['media_reproduction_rate']
         # Covariance punishment
         self.covariance_punishment = sim_config['covariance_punishment']
         # Individual Mind Updating Index
@@ -181,10 +181,11 @@ class Simulation():
 
     def run_simulation(self, n_steps=1, proc_id=0, verbose=0):
         percent = 0.2
+        active_media_list = [m for m in self.all_media if m.active]
         with alive_bar(n_steps, spinner='waves') as bar:
             for step in np.arange(n_steps):
                 self.current_step += 1
-                n_active = np.sum([m.active for m in self.all_media])
+                n_active = len(active_media_list)  # np.sum([m.active for m in self.all_media])
 
                 # Verbose control
                 if verbose == 0:   # loading bar
@@ -198,34 +199,32 @@ class Simulation():
                     print('Step: ', self.current_step, '  |  Active Media: ', n_active)
 
                 # Populate world with memes
-                active_media = []
-                for m in self.all_media:
+                for m in active_media_list:
                     m.reset_states()
                     if m.active:
-                        active_media.append(m)
                         self.all_memes.extend(m.produce_memes())
 
                 # Individuals routines
                 for i in self.all_individuals:
                     # Chance of reborn (position randomly changed)
-                    if np.random.rand() > 0.96:
+                    if np.random.rand() > 0.97:
                         i.x = np.random.rand() * 2 - 1
                         i.y = np.random.rand() * 2 - 1
                     # Individuals consume memes | media collect rewards
                     i.consume_memes()
 
                 # Control media budget: remove (<0) or constrain (>100)
-                for m in self.all_media:
-                    if m.active:
-                        m.budget += m.reward
-                        if m.budget <= 0 or np.random.rand() > 0.99:
-                            m.active = False
-                            m.deactivated = self.current_step
-                        elif m.budget > 100:
-                            m.budget = 100
+                for m in active_media_list:
+                    m.budget += m.reward
+                    if m.budget <= 0 or np.random.rand() > 0.999:
+                        m.active = False
+                        m.deactivated = self.current_step
+                        active_media_list.remove(m)
+                    elif m.budget > 100:
+                        m.budget = 100
 
                 # Random chance of "reproduction"
-                n_new = np.random.poisson(1)
+                n_new = np.random.poisson(self.media_reproduction_rate)
                 for new in np.arange(n_new):
                     new_media = Media(
                         simulation=self,
@@ -234,12 +233,12 @@ class Simulation():
                         quadrant=np.random.randint(4) + 1
                     )
                     # Randomly choose parents and inherited attributes
-                    parents = np.random.choice(active_media, size=2, replace=False)
+                    parents = np.random.choice(active_media_list, size=2, replace=False)
                     attributes = np.array([0, 0, 1, 1])
                     np.random.shuffle(attributes)
-                    new_media.mpr = parents[attributes[0]].mpr + (np.random.rand() - 0.5)
-                    new_media.x = parents[attributes[1]].x + (np.random.rand() - 0.5) * 0.1
-                    new_media.y = parents[attributes[2]].y + (np.random.rand() - 0.5) * 0.1
+                    new_media.meme_production_rate = max(0.01, parents[attributes[0]].meme_production_rate + (np.random.rand() - 0.5))
+                    new_media.x = min(1, max(-1, parents[attributes[1]].x + (np.random.rand() - 0.5) * 0.1))
+                    new_media.y = min(1, max(-1, parents[attributes[2]].y + (np.random.rand() - 0.5) * 0.1))
                     # Estimate Covariance of parent from random sampling. This has two advantages:
                     # 1- guarantees it will be positive semi-definite
                     # 2- introduces random noise (finite sample), while being close to the parent
@@ -247,7 +246,7 @@ class Simulation():
                         mean=[parents[attributes[3]].x, parents[attributes[3]].y],
                         cov=parents[attributes[3]].cov,
                         size=20,
-                    )  # np.array([[meme.x, meme.y] for meme in parents[attributes[3]].memes])
+                    )
                     try:
                         new_media.cov = np.cov(memes_xy, rowvar=False)
                         # new_media.cov = check_covariance(cov)
@@ -256,6 +255,7 @@ class Simulation():
                         print('Singular matrix, skipping new media')
                     # Add new media to simulation
                     self.all_media.append(new_media)
+                    active_media_list.append(new_media)
 
                     # Store instantaneous values
                     # self.store_simulation_values(self.current_step)
