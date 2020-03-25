@@ -17,6 +17,7 @@ default_config = {
     'n_individuals': 1000,
     'individual_mui': 0.01,
     'individual_mcr': 5,
+    'max_reward': 0.2,
 }
 
 

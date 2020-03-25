@@ -59,10 +59,9 @@ class Media():
     def get_reward(self, distance):
         # In a [-1, 1] 2D space, the average random distance is 1
         # Reward as a function of distance to meme minus covariance punishment
-        # reward = 1 / (100 * distance) - self.simulation.covariance_punishment * self.cov
         reward = 1 / (self.simulation.n_individuals * distance) - \
             self.simulation.covariance_punishment * (self.cov[0, 0] + self.cov[1, 1])
-        self.reward += max(0, min(1, reward))
+        self.reward += max(0, min(self.simulation.config['max_reward'], reward))
         # print(reward)
 
     def reset_states(self):
