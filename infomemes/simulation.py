@@ -9,12 +9,14 @@ import json
 # Default simulation configurations
 default_config = {
     # media
-    'n_media': 100,
+    'n_media': 80,
     'meme_production_rate': 10,
     'media_reproduction_rate': 1,
+    'media_deactivation_rate': 0.001,
     'covariance_punishment': 0.5,
     # individuals
-    'n_individuals': 1000,
+    'individual_renewal_rate': 0.03,
+    'n_individuals': 500,
     'individual_mui': 0.01,
     'individual_mcr': 5,
     'max_reward': 0.2,

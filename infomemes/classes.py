@@ -206,7 +206,7 @@ class Simulation():
                 # Individuals routines
                 for i in self.all_individuals:
                     # Chance of reborn (position randomly changed)
-                    if np.random.rand() > 0.97:
+                    if np.random.rand() < self.config['individual_renewal_rate']:
                         i.x = np.random.rand() * 2 - 1
                         i.y = np.random.rand() * 2 - 1
                     # Individuals consume memes | media collect rewards
@@ -215,7 +215,7 @@ class Simulation():
                 # Control media budget: remove (<0) or constrain (>100)
                 for m in active_media_list:
                     m.budget += m.reward
-                    if m.budget <= 0 or np.random.rand() > 0.999:
+                    if m.budget <= 0 or np.random.rand() < self.config['media_deactivation_rate']:
                         m.active = False
                         m.deactivated = self.current_step
                         active_media_list.remove(m)
