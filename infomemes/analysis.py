@@ -21,11 +21,15 @@ def survival_statistics(sim):
     if isinstance(sim, str):
         with open(sim, 'r') as f:
             sim = json.loads(f.read())
+        # metadata
+        duration = sim['metadata']['duration']
+        media_reproduction_rate = sim['metadata']['media_reproduction_rate']
+        covariance_punishment = sim['metadata']['covariance_punishment']
+        individuals_xy = np.array(sim['metadata']['individuals_xy'])
         # data
         activated = list(sim['data']['activated'].values())
         deactivated = list(sim['data']['deactivated'].values())
-        n_steps = max(deactivated)
-        active = np.array([t == n_steps for t in deactivated])
+        active = np.array([t == duration for t in deactivated])
         survival_times = np.array(deactivated) - np.array(activated)
         position_x = np.array(list(sim['data']['position_x'].values()))
         position_y = np.array(list(sim['data']['position_y'].values()))
@@ -34,9 +38,6 @@ def survival_statistics(sim):
         cov_diagonal = np.array(cov_x) + np.array(cov_y)
         cov_xy = list(sim['data']['cov_xy'].values())
         mpr = list(sim['data']['meme_production_rate'].values())
-        # metadata
-        media_reproduction_rate = sim['metadata']['media_reproduction_rate']
-        covariance_punishment = sim['metadata']['covariance_punishment']
     else:
         for m in sim.all_media:
             if m.active:
@@ -63,8 +64,11 @@ def survival_statistics(sim):
     ax2 = fig.add_subplot(gs[1:, 0])
     ax2.plot([-1, 1], [0, 0], 'k', linewidth=0.8)
     ax2.plot([0, 0], [-1, 1], 'k', linewidth=0.8)
+    ax2.scatter(individuals_xy[:, 0], individuals_xy[:, 1], c='k', marker='.', s=1)
     ax2.scatter(position_x, position_y, s=10 * np.array(survival_times) / max_time, alpha=0.2)
     ax2.scatter(position_x[active], position_y[active], s=20, c='r')
+    ax2.set_xlim([-1, 1])
+    ax2.set_ylim([-1, 1])
 
     ax3 = fig.add_subplot(gs[0, 1])
     ax3.scatter(survival_times, cov_diagonal, c='k', s=1)
@@ -82,8 +86,6 @@ def survival_statistics(sim):
     ax5.set_ylabel('MPR')
 
     plt.show()
-
-    return active, deactivated
 
 
 def plot_current_state(sim, media_ids=None):
