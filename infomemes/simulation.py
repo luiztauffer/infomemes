@@ -58,23 +58,40 @@ def multiprocessing_organizer(sim_config, n_steps=100, n_sims=1, n_procs=2, verb
     n_procs = min(n_procs, max_procs)
 
     # Multiprocessing pool
-    with concurrent.futures.ProcessPoolExecutor() as executor:
-        procs_list = []
-        for i in range(n_procs):
-            kwargs = {
-                'sim_config': sim_config,
-                'n_steps': n_steps,
-                'n_sims': n_sims,
-                'proc_id': i,
-                'verbose': verbose,
-                'save_dir': save_dir,
-            }
-            p = executor.submit(sim_routine, **kwargs)
-            procs_list.append(p)
-
-        # concurrent.futures.wait(procs_list, timeout=None, return_when='ALL_COMPLETED')
-        for p in concurrent.futures.as_completed(procs_list):
-            print(p.result())
+    if isinstance(sim_config, list):
+        with concurrent.futures.ProcessPoolExecutor(max_workers=n_procs) as executor:
+            procs_list = []
+            for i, sim in enumerate(sim_config):
+                kwargs = {
+                    'sim_config': sim,
+                    'n_steps': n_steps,
+                    'n_sims': n_sims,
+                    'proc_id': i,
+                    'verbose': verbose,
+                    'save_dir': save_dir,
+                }
+                p = executor.submit(sim_routine, **kwargs)
+                procs_list.append(p)
+            # concurrent.futures.wait(procs_list, timeout=None, return_when='ALL_COMPLETED')
+            for p in concurrent.futures.as_completed(procs_list):
+                print(p.result())
+    else:
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            procs_list = []
+            for i in range(n_procs):
+                kwargs = {
+                    'sim_config': sim_config,
+                    'n_steps': n_steps,
+                    'n_sims': n_sims,
+                    'proc_id': i,
+                    'verbose': verbose,
+                    'save_dir': save_dir,
+                }
+                p = executor.submit(sim_routine, **kwargs)
+                procs_list.append(p)
+            # concurrent.futures.wait(procs_list, timeout=None, return_when='ALL_COMPLETED')
+            for p in concurrent.futures.as_completed(procs_list):
+                print(p.result())
 
 
 # Parse arguments and call routines
