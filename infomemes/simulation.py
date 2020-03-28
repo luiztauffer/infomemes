@@ -1,6 +1,7 @@
 from infomemes.classes import Simulation
 from infomemes.to_from_file import save_light_data
 
+from pathlib import Path
 import concurrent.futures
 import multiprocessing
 import json
@@ -24,7 +25,7 @@ default_config = {
 
 
 # Simulation routine
-def sim_routine(sim_config, n_steps=100, n_sims=1, proc_id=0, verbose=0):
+def sim_routine(sim_config, n_steps=100, n_sims=1, proc_id=0, verbose=0, save_dir=None):
     try:
         for i in range(n_sims):
             # Set up simulation
@@ -35,7 +36,9 @@ def sim_routine(sim_config, n_steps=100, n_sims=1, proc_id=0, verbose=0):
             sim.run_simulation(n_steps=n_steps, proc_id=proc_id, verbose=verbose)
 
             # Save simulation to file
-            fname = 'sim_' + str(proc_id * n_sims + i) + '.json'
+            if save_dir is None:
+                save_dir = Path.cwd()
+            fname = str(save_dir / 'sim_' + str(proc_id * n_sims + i) + '.json')
             save_light_data(sim, fname)
         return 'Process ' + str(proc_id) + ' finished all simulations'
     except BaseException as e:
@@ -47,7 +50,7 @@ def sim_routine(sim_config, n_steps=100, n_sims=1, proc_id=0, verbose=0):
 
 
 # Multiprocessing organizer
-def multiprocessing_organizer(sim_config, n_steps=100, n_sims=1, n_procs=2, verbose=0):
+def multiprocessing_organizer(sim_config, n_steps=100, n_sims=1, n_procs=2, verbose=0, save_dir=None):
     # Maximum available processors
     max_procs = multiprocessing.cpu_count()
     n_procs = min(n_procs, max_procs)
@@ -61,11 +64,13 @@ def multiprocessing_organizer(sim_config, n_steps=100, n_sims=1, n_procs=2, verb
                 'n_steps': n_steps,
                 'n_sims': n_sims,
                 'proc_id': i,
-                'verbose': verbose
+                'verbose': verbose,
+                'save_dir': save_dir,
             }
             p = executor.submit(sim_routine, **kwargs)
             procs_list.append(p)
 
+        # concurrent.futures.wait(procs_list, timeout=None, return_when='ALL_COMPLETED')
         for p in concurrent.futures.as_completed(procs_list):
             print(p.result())
 

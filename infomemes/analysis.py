@@ -1,3 +1,6 @@
+from infomemes.utils import media_color_schema
+
+from sklearn.cluster import DBSCAN
 import matplotlib.pyplot as plt
 import numpy as np
 import json
@@ -53,6 +56,12 @@ def survival_statistics(sim):
     max_time = max(survival_times)
     min_time = min(survival_times)
 
+    # Cluster analysis
+    X = np.array([position_x[active], position_y[active]]).T
+    db = DBSCAN(eps=0.2, min_samples=3).fit(X)
+    cluster_labels = db.labels_
+    cluster_colors = [media_color_schema[i % len(media_color_schema)](1) for i in cluster_labels]
+
     # Plots
     fig = plt.figure()
     fig.suptitle(f'MRR: {media_reproduction_rate}, CP:{covariance_punishment}', fontsize=16)
@@ -66,7 +75,7 @@ def survival_statistics(sim):
     ax2.plot([0, 0], [-1, 1], 'k', linewidth=0.8)
     ax2.scatter(individuals_xy[:, 0], individuals_xy[:, 1], c='k', marker='.', s=1)
     ax2.scatter(position_x, position_y, s=10 * np.array(survival_times) / max_time, alpha=0.2)
-    ax2.scatter(position_x[active], position_y[active], s=20, c='r')
+    ax2.scatter(position_x[active], position_y[active], s=20, c=cluster_colors, alpha=1)
     ax2.set_xlim([-1, 1])
     ax2.set_ylim([-1, 1])
 
@@ -118,6 +127,17 @@ def plot_media_contours(media, ax):
             Z[i, j] = media.mvg.pdf([x, y])
     ax.contourf(X, Y, Z, levels=3, cmap=media.cmap)  # , alpha=0.3)
     ax.plot(media.x, media.y, 'o', color=media.cmap(1), alpha=1, markersize=5)
+
+
+def cluster_analysis(positions_xy):
+    """
+    Automatic cluster analysis.
+
+    Parameters:
+    positions_xy: 2D numpy array
+        2D numpy array of dimmensions [n_points, 2] with (x, y) positions of n_points.
+    """
+    n_points = positions_xy.shape[0]
 
 
 if __name__ == '__main__':

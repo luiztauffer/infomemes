@@ -21,7 +21,7 @@ setup(
     url='https://github.com/luiztauffer/infomemes',
     keywords='',
     install_requires=[
-        'numpy', 'scipy', 'pandas', 'matplotlib', 'alive_progress'
+        'numpy', 'scipy', 'pandas', 'matplotlib', 'alive_progress', 'scikit-learn'
     ],
     entry_points={
         'console_scripts': ['infomemes=infomemes.simulation:main'],
