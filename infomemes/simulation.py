@@ -52,7 +52,7 @@ def sim_routine(sim_config, n_steps=100, n_sims=1, proc_id=0, verbose=0, save_di
 
 
 # Multiprocessing organizer
-def multiprocessing_organizer(sim_config, n_steps=100, n_sims=1, n_procs=2, verbose=0, save_dir=None):
+def multiprocessing_organizer(sim_config, n_steps=10, n_sims=1, n_procs=2, verbose=0, save_dir=None):
     # Maximum available processors
     max_procs = multiprocessing.cpu_count()
     n_procs = min(n_procs, max_procs)
