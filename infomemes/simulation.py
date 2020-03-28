@@ -38,7 +38,7 @@ def sim_routine(sim_config, n_steps=100, n_sims=1, proc_id=0, verbose=0, save_di
             # Save simulation to file
             if save_dir is None:
                 save_dir = Path.cwd()
-            fname = str(save_dir / 'sim_' + str(proc_id * n_sims + i) + '.json')
+            fname = str(save_dir / ('sim_' + str(proc_id * n_sims + i) + '.json'))
             save_light_data(sim, fname)
         return 'Process ' + str(proc_id) + ' finished all simulations'
     except BaseException as e:
