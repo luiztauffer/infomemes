@@ -1,6 +1,7 @@
 from infomemes.classes import Simulation
 from infomemes.to_from_file import save_light_data
 
+import numpy as np
 from pathlib import Path
 import concurrent.futures
 import multiprocessing
@@ -27,6 +28,7 @@ default_config = {
 # Simulation routine
 def sim_routine(sim_config, n_steps=100, n_sims=1, proc_id=0, verbose=0, save_dir=None):
     try:
+        np.random.seed()
         for i in range(n_sims):
             # Set up simulation
             sim = Simulation(sim_config=sim_config)

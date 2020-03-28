@@ -15,7 +15,7 @@ Media inconsistency punishment: low, medium or high
     "individual_renewal_rate": [0.01, 0.05, 0.1],
     "max_reward": 0.2,
     "media_deactivation_rate": [0.001, 0.01, 0.05],
-    "media_reproduction_rate": [.05, 0.1, 0.2],
+    "media_reproduction_rate": [.1, 0.5, 1],
     "meme_production_rate": 8,
     "n_individuals": 600,
     "n_media": 80
