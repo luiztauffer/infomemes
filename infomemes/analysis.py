@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import json
-import copy
 
 
 def read_sim_results(sim, step_filtered=0):
@@ -74,7 +73,7 @@ def read_sim_results(sim, step_filtered=0):
         'activated': activated[filtered],
         'deactivated': deactivated[filtered],
         'active': active[filtered],
-        'survival_times': survival_times[filtered],
+        'survival_times': survival_times[filtered].astype('int'),
         'position_x': position_x[filtered],
         'position_y': position_y[filtered],
         'cov_x': cov_x[filtered],
@@ -105,33 +104,46 @@ def all_sims_summary(sims_list, step_filtered=0):
     df_clusters: Pandas DataFrame with results by cluster
     """
     # Organize Simulations DataFrame
-    colnames_sims = ['covariance_punishment', 'media_reproduction_rate', 'media_deactivation_rate',
-                     'individual_mui', 'individual_renewal_rate', 'individual_mcr', 'max_reward',
-                     'clusters_distances']
-    df_sims = pd.DataFrame(columns=colnames_sims)
+    df_sims = pd.DataFrame({
+        'covariance_punishment': pd.Series([], dtype='float'),
+        'media_reproduction_rate': pd.Series([], dtype='float'),
+        'media_deactivation_rate': pd.Series([], dtype='float'),
+        'individual_mui': pd.Series([], dtype='float'),
+        'individual_renewal_rate': pd.Series([], dtype='float'),
+        'individual_mcr': pd.Series([], dtype='float'),
+        'max_reward': pd.Series([], dtype='float'),
+        'clusters_distances': pd.Series([], dtype='O'),
+        'media_dynamics': pd.Series([], dtype='category'),
+        'individual_dynamics': pd.Series([], dtype='category'),
+    })
 
     # Organize Media DataFrame
-    colnames_media = ['simulation', 'activated', 'deactivated', 'position_x', 'position_y',
-                      'cov_x', 'cov_y', 'cov_xy', 'meme_production_rate', 'survival_time']
-    df_media = pd.DataFrame(columns=colnames_media)
+    df_media = pd.DataFrame({
+        'simulation': pd.Series([], dtype='int'),
+        'activated': pd.Series([], dtype='int'),
+        'deactivated': pd.Series([], dtype='int'),
+        'position_x': pd.Series([], dtype='float'),
+        'position_y': pd.Series([], dtype='float'),
+        'cov_x': pd.Series([], dtype='float'),
+        'cov_y': pd.Series([], dtype='float'),
+        'cov_xy': pd.Series([], dtype='float'),
+        'meme_production_rate': pd.Series([], dtype='float'),
+        'survival_time': pd.Series([], dtype='Int64'),
+        'cluster_index': pd.Series([], dtype='Int64'),
+    })
 
     # Organize Clusters DataFrame
     colnames_clusters = ['simulation', 'n_members', 'center_of_mass']
-    df_clusters = pd.DataFrame(columns=colnames_clusters)
+    df_clusters = pd.DataFrame({
+        'simulation': pd.Series([], dtype='int'),
+        'n_members': pd.Series([], dtype='int'),
+        'center_of_mass': pd.Series([], dtype='O'),
+    })
 
     # Iterate over all simulations in list and populate DataFrames
+    last_cluster_index = 0
     for sim_id, sim in enumerate(sims_list):
         sim_results = read_sim_results(sim, step_filtered=step_filtered)
-
-        # Update Media DataFrame
-        n_media = sim_results['activated'].shape[0]
-        sim_array = [sim_id] * n_media
-        df = pd.DataFrame(data=np.array([sim_array, sim_results['activated'], sim_results['deactivated'],
-                                         sim_results['position_x'], sim_results['position_y'],
-                                         sim_results['cov_x'], sim_results['cov_y'], sim_results['cov_xy'],
-                                         sim_results['meme_production_rate'], sim_results['survival_times']]).T,
-                          columns=colnames_media)
-        df_media = pd.concat([df_media, df], ignore_index=True)
 
         # Cluster analysis
         position_x = sim_results['position_x']
@@ -140,26 +152,43 @@ def all_sims_summary(sims_list, step_filtered=0):
         X = np.array([position_x[active], position_y[active]]).T
         dbc, center_of_mass, n_members, clusters_distances = cluster_analysis(data_points=X)
         n_clusters = n_members.shape[0]
-        sim_array = [sim_id] * n_clusters
+        cluster_indexes = np.arange(last_cluster_index, last_cluster_index + n_clusters)
+        last_cluster_index = cluster_indexes[-1] + 1
 
         # Update Clusters DataFrame
+        sim_array = [sim_id] * n_clusters
         df = pd.DataFrame(columns=colnames_clusters)
         for i in range(n_clusters):
             aux = pd.DataFrame(data=[[sim_array[i], n_members[i], [center_of_mass[i]]]],
-                               columns=colnames_clusters)
+                               columns=df_clusters.columns)
             df = pd.concat([df, aux])
-
         df_clusters = pd.concat([df_clusters, df], ignore_index=True)
 
+        # Update Media DataFrame
+        n_media = sim_results['activated'].shape[0]
+        sim_array = np.array([sim_id] * n_media, dtype=int)
+        media_cluster_index = np.array([np.nan] * n_media)
+        media_cluster_index[np.where(sim_results['active'])[0]] = cluster_indexes[dbc.labels_]
+        df = pd.DataFrame(data=np.array([sim_array, sim_results['activated'], sim_results['deactivated'],
+                                         sim_results['position_x'], sim_results['position_y'],
+                                         sim_results['cov_x'], sim_results['cov_y'], sim_results['cov_xy'],
+                                         sim_results['meme_production_rate'], sim_results['survival_times'],
+                                         media_cluster_index]).T,
+                          columns=df_media.columns)
+        df_media = pd.concat([df_media, df], ignore_index=True)
+
         # Update Simulations DataFrame
+        media_dynamics = [.5, 1, 2].index(sim_results['media_reproduction_rate'])
+        individual_dynamics = [0.01, 0.05, 0.1].index(sim_results['individual_renewal_rate'])
         df = pd.DataFrame(data=[[sim_results['covariance_punishment'], sim_results['media_reproduction_rate'],
                                  sim_results['media_deactivation_rate'], sim_results['individual_mui'],
                                  sim_results['individual_renewal_rate'], sim_results['individual_mcr'],
-                                 sim_results['max_reward'], clusters_distances]],
-                          columns=colnames_sims, index=[sim_id])
+                                 sim_results['max_reward'], clusters_distances,
+                                 media_dynamics, individual_dynamics]],
+                          columns=df_sims.columns, index=[sim_id])
         df_sims = pd.concat([df_sims, df])
 
-    return df_sims, df_media, df_clusters
+    return df_sims, df_media, df_clusters, dbc
 
 
 def cluster_analysis(data_points):
