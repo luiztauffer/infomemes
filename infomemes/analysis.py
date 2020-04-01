@@ -112,16 +112,18 @@ def all_sims_summary(sims_list, step_filtered=0):
         'individual_renewal_rate': pd.Series([], dtype='float'),
         'individual_mcr': pd.Series([], dtype='float'),
         'max_reward': pd.Series([], dtype='float'),
+        'n_clusters': pd.Series([], dtype='Int64'),
         'clusters_distances': pd.Series([], dtype='O'),
         'media_dynamics': pd.Series([], dtype='category'),
         'individual_dynamics': pd.Series([], dtype='category'),
+        'cp_category': pd.Series([], dtype='category'),
     })
 
     # Organize Media DataFrame
     df_media = pd.DataFrame({
-        'simulation': pd.Series([], dtype='int'),
-        'activated': pd.Series([], dtype='int'),
-        'deactivated': pd.Series([], dtype='int'),
+        'simulation': pd.Series([], dtype='Int64'),
+        'activated': pd.Series([], dtype='Int64'),
+        'deactivated': pd.Series([], dtype='Int64'),
         'position_x': pd.Series([], dtype='float'),
         'position_y': pd.Series([], dtype='float'),
         'cov_x': pd.Series([], dtype='float'),
@@ -135,8 +137,8 @@ def all_sims_summary(sims_list, step_filtered=0):
     # Organize Clusters DataFrame
     colnames_clusters = ['simulation', 'n_members', 'center_of_mass']
     df_clusters = pd.DataFrame({
-        'simulation': pd.Series([], dtype='int'),
-        'n_members': pd.Series([], dtype='int'),
+        'simulation': pd.Series([], dtype='Int64'),
+        'n_members': pd.Series([], dtype='Int64'),
         'center_of_mass': pd.Series([], dtype='O'),
     })
 
@@ -150,6 +152,8 @@ def all_sims_summary(sims_list, step_filtered=0):
         position_y = sim_results['position_y']
         active = sim_results['active']
         X = np.array([position_x[active], position_y[active]]).T
+        if X.shape[0] == 0:
+            print(sim, ' no media')
         dbc, center_of_mass, n_members, clusters_distances = cluster_analysis(data_points=X)
         n_clusters = n_members.shape[0]
         cluster_indexes = np.arange(last_cluster_index, last_cluster_index + n_clusters)
@@ -180,11 +184,12 @@ def all_sims_summary(sims_list, step_filtered=0):
         # Update Simulations DataFrame
         media_dynamics = [.5, 1, 2].index(sim_results['media_reproduction_rate'])
         individual_dynamics = [0.01, 0.05, 0.1].index(sim_results['individual_renewal_rate'])
+        cp_category = [0.01, 0.05, 0.1].index(sim_results['covariance_punishment'])
         df = pd.DataFrame(data=[[sim_results['covariance_punishment'], sim_results['media_reproduction_rate'],
                                  sim_results['media_deactivation_rate'], sim_results['individual_mui'],
                                  sim_results['individual_renewal_rate'], sim_results['individual_mcr'],
-                                 sim_results['max_reward'], clusters_distances,
-                                 media_dynamics, individual_dynamics]],
+                                 sim_results['max_reward'], n_clusters, clusters_distances,
+                                 media_dynamics, individual_dynamics, cp_category]],
                           columns=df_sims.columns, index=[sim_id])
         df_sims = pd.concat([df_sims, df])
 
