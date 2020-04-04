@@ -3,6 +3,21 @@ import numpy as np
 import json
 
 
+def save_stepwise_data(sim, fname):
+    # Simulation metadata
+    metadata = {
+        'duration': sim.current_step,
+    }
+    metadata.update(sim.config)
+
+    file_dict = {}
+    file_dict['metadata'] = metadata
+    file_dict['data'] = sim.stepwise_values
+
+    with open(fname, 'w') as f:
+        json.dump(file_dict, f)
+
+
 def save_light_data(sim, fname):
     activated = []
     deactivated = []

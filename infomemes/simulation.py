@@ -1,5 +1,5 @@
 from infomemes.classes import Simulation
-from infomemes.to_from_file import save_light_data
+from infomemes.to_from_file import save_light_data, save_stepwise_data
 
 import numpy as np
 from pathlib import Path
@@ -11,22 +11,23 @@ import json
 # Default simulation configurations
 default_config = {
     # media
-    'n_media': 80,
-    'meme_production_rate': 10,
-    'media_reproduction_rate': 1,
+    'n_media': 100,
+    'meme_production_rate': 5,
+    'media_reproduction_rate': 0.05,
     'media_deactivation_rate': 0.001,
-    'covariance_punishment': 0.5,
+    'covariance_punishment': 0.1,
     # individuals
     'individual_renewal_rate': 0.03,
-    'n_individuals': 500,
-    'individual_mui': 0.01,
+    'n_individuals': 200,
+    'individual_mui': 0.002,
     'individual_mcr': 5,
-    'max_reward': 0.2,
+    'max_reward': 0.5,
 }
 
 
 # Simulation routine
-def sim_routine(sim_config, n_steps=100, n_sims=1, proc_id=0, verbose=0, save_dir=None):
+def sim_routine(sim_config, n_steps=100, n_sims=1, proc_id=0, verbose=0, save_dir=None,
+                store_stepwise_values=False):
     try:
         np.random.seed()
         for i in range(n_sims):
@@ -35,24 +36,29 @@ def sim_routine(sim_config, n_steps=100, n_sims=1, proc_id=0, verbose=0, save_di
 
             # Run simulation
             n_steps = n_steps
-            sim.run_simulation(n_steps=n_steps, proc_id=proc_id, verbose=verbose)
+            sim.run_simulation(n_steps=n_steps, proc_id=proc_id, verbose=verbose,
+                               store_stepwise_values=store_stepwise_values)
 
             # Save simulation to file
             if save_dir is None:
                 save_dir = Path.cwd()
             fname = str(save_dir / ('sim_' + str(proc_id * n_sims + i) + '.json'))
             save_light_data(sim, fname)
+
+            # Save stepwise data to file
+            if store_stepwise_values:
+                fname = str(save_dir / ('sim_' + str(proc_id * n_sims + i) + '_stepwise.json'))
+                save_stepwise_data(sim, fname)
+
         return 'Process ' + str(proc_id) + ' finished all simulations'
     except BaseException as e:
         print(e)
         return e
 
-    # sim.plot_current_state()
-    # sim.plot_history()
-
 
 # Multiprocessing organizer
-def multiprocessing_organizer(sim_config, n_steps=10, n_sims=1, n_procs=2, verbose=0, save_dir=None):
+def multiprocessing_organizer(sim_config, n_steps=10, n_sims=1, n_procs=2, verbose=0,
+                              save_dir=None, store_stepwise_values=False):
     # Maximum available processors
     max_procs = multiprocessing.cpu_count()
     n_procs = min(n_procs, max_procs)
@@ -69,6 +75,7 @@ def multiprocessing_organizer(sim_config, n_steps=10, n_sims=1, n_procs=2, verbo
                     'proc_id': i,
                     'verbose': verbose,
                     'save_dir': save_dir,
+                    'store_stepwise_values': store_stepwise_values,
                 }
                 p = executor.submit(sim_routine, **kwargs)
                 procs_list.append(p)
@@ -86,6 +93,7 @@ def multiprocessing_organizer(sim_config, n_steps=10, n_sims=1, n_procs=2, verbo
                     'proc_id': i,
                     'verbose': verbose,
                     'save_dir': save_dir,
+                    'store_stepwise_values': store_stepwise_values,
                 }
                 p = executor.submit(sim_routine, **kwargs)
                 procs_list.append(p)
@@ -125,6 +133,11 @@ def main():
         default=0,
         help="0: silent, 1: prints summary info, 2: prints detailed info."
     )
+    parser.add_argument(
+        "--stepwise",
+        default=False,
+        help="Whether to store or not stepwise values."
+    )
 
     args = parser.parse_args()
     if args.sim_config is None:
@@ -136,11 +149,14 @@ def main():
     n_sims = int(args.n_sims)
     n_procs = int(args.n_procs)
     verbose = int(args.verbose)
+    stepwise = args.stepwise
 
     if n_procs == 1:
-        sim_routine(sim_config=sim_config, n_steps=n_steps, n_sims=n_sims, verbose=verbose)
+        sim_routine(sim_config=sim_config, n_steps=n_steps, n_sims=n_sims,
+                    verbose=verbose, store_stepwise_values=stepwise)
     elif n_procs > 1:
-        multiprocessing_organizer(sim_config=sim_config, n_steps=n_steps, n_sims=n_sims, n_procs=n_procs, verbose=verbose)
+        multiprocessing_organizer(sim_config=sim_config, n_steps=n_steps, n_sims=n_sims,
+                                  n_procs=n_procs, verbose=verbose, store_stepwise_values=stepwise)
 
 
 # Called from command line

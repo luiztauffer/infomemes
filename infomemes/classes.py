@@ -59,8 +59,9 @@ class Media():
     def get_reward(self, distance):
         # In a [-1, 1] 2D space, the average random distance is 1
         # Reward as a function of distance to meme minus covariance punishment
-        reward = 1 / (self.simulation.n_individuals * distance) - \
-            self.simulation.covariance_punishment * (self.cov[0, 0] + self.cov[1, 1])
+        # reward = 1 / (self.simulation.n_individuals * distance) - \
+        #     self.simulation.covariance_punishment * (self.cov[0, 0] + self.cov[1, 1])
+        reward = 1 - self.simulation.covariance_punishment * (self.cov[0, 0] + self.cov[1, 1])
         self.reward += max(0, min(self.simulation.config['max_reward'], reward))
         # print(reward)
 
@@ -78,7 +79,11 @@ class Media():
         for k, v in self.__dict__.items():
             if k == 'memes':
                 output[k] = [meme.to_dict() for meme in v]
-            elif k == 'simulation':
+            elif k == 'cov':
+                output['cov_x'] = self.cov[0, 0]
+                output['cov_y'] = self.cov[1, 1]
+                output['cov_xy'] = self.cov[0, 1]
+            elif k in ['simulation', 'cmap', 'mvg']:
                 pass
             else:
                 output[k] = v
@@ -137,8 +142,8 @@ class Individual():
         # Iterate over consumed_memes list: [(distance, meme.parent)...]
         # Moves towards (mui>0) or away from (mui<0) consumed memes positions
         for dist, meme in consumed_memes:
-            self.x += (meme.x - self.x) * self.mui
-            self.y += (meme.y - self.y) * self.mui
+            self.x += (meme.x - self.x)/abs(meme.x - self.x) * self.mui
+            self.y += (meme.y - self.y)/abs(meme.y - self.y) * self.mui
 
     def reward_media(self, consumed_memes):
         # Iterate over consumed_memes list: [(distance, meme.parent)...]
@@ -175,16 +180,16 @@ class Simulation():
         self.all_media = [Media(self, id=i, step=0, quadrant=i % 4 + 1) for i in range(self.n_media)]
         self.all_memes = []
         # Dictionary to store time-evolving values
-        self.simulation_values = dict()
+        self.stepwise_values = dict()
         self.current_step = -1
 
-    def run_simulation(self, n_steps=1, proc_id=0, verbose=0):
+    def run_simulation(self, n_steps=1, proc_id=0, store_stepwise_values=False, verbose=0):
         percent = 0.2
-        active_media_list = [m for m in self.all_media if m.active]
+        self.active_media_list = [m for m in self.all_media if m.active]
         with alive_bar(n_steps, spinner='waves') as bar:
             for step in np.arange(n_steps):
                 self.current_step += 1
-                n_active = len(active_media_list)  # np.sum([m.active for m in self.all_media])
+                n_active = len(self.active_media_list)  # np.sum([m.active for m in self.all_media])
 
                 # Verbose control
                 if verbose == 0:   # loading bar
@@ -198,7 +203,7 @@ class Simulation():
                     print('Step: ', self.current_step, '  |  Active Media: ', n_active)
 
                 # Populate world with memes
-                for m in active_media_list:
+                for m in self.active_media_list:
                     m.reset_states()
                     if m.active:
                         self.all_memes.extend(m.produce_memes())
@@ -213,18 +218,24 @@ class Simulation():
                     i.consume_memes()
 
                 # Control media budget: remove (<0) or constrain (>100)
-                for m in active_media_list:
+                for m in self.active_media_list:
                     m.budget += m.reward
                     if m.budget <= 0 or np.random.rand() < self.config['media_deactivation_rate']:
                         m.active = False
                         m.deactivated = self.current_step
-                        active_media_list.remove(m)
+                        self.active_media_list.remove(m)
                     elif m.budget > 100:
                         m.budget = 100
 
                 # Random chance of "reproduction"
-                n_new = np.random.poisson(self.media_reproduction_rate)
-                for new in np.arange(n_new):
+                # n_new = np.random.poisson(self.media_reproduction_rate)
+                ind_reproducers = np.where(np.random.rand(len(self.active_media_list)) < self.media_reproduction_rate)[0]
+                array_reproducers = np.array(self.active_media_list)[ind_reproducers]
+                if array_reproducers.shape[0] % 2 == 1:
+                    array_reproducers = array_reproducers[:-1]
+                all_parents = np.reshape(np.random.choice(array_reproducers, size=len(array_reproducers), replace=False), newshape=(-1, 2))
+                # for new in np.arange(n_new):
+                for parents in all_parents:
                     new_media = Media(
                         simulation=self,
                         id=len(self.all_media),
@@ -232,7 +243,7 @@ class Simulation():
                         quadrant=np.random.randint(4) + 1
                     )
                     # Randomly choose parents and inherited attributes
-                    parents = np.random.choice(active_media_list, size=2, replace=False)
+                    # parents = np.random.choice(self.active_media_list, size=2, replace=False)
                     attributes = np.array([0, 0, 1, 1])
                     np.random.shuffle(attributes)
                     new_media.meme_production_rate = max(0.01, parents[attributes[0]].meme_production_rate + (np.random.rand() - 0.5))
@@ -242,7 +253,7 @@ class Simulation():
                     # 1- guarantees it will be positive semi-definite
                     # 2- introduces random noise (finite sample), while being close to the parent
                     memes_xy = np.random.multivariate_normal(
-                        mean=[parents[attributes[3]].x, parents[attributes[3]].y],
+                        mean=[new_media.x, new_media.y],
                         cov=parents[attributes[3]].cov,
                         size=20,
                     )
@@ -254,18 +265,19 @@ class Simulation():
                         print('Singular matrix, skipping new media')
                     # Add new media to simulation
                     self.all_media.append(new_media)
-                    active_media_list.append(new_media)
+                    self.active_media_list.append(new_media)
 
-                    # Store instantaneous values
-                    # self.store_simulation_values(self.current_step)
+                # Store instantaneous values
+                if store_stepwise_values:
+                    self.store_stepwise_values(self.current_step)
 
-                    # Clear memes
-                    self.all_memes = []
+                # Clear memes
+                self.all_memes = []
 
-    def store_simulation_values(self, step):
-        self.simulation_values[str(step)] = {
+    def store_stepwise_values(self, step):
+        self.stepwise_values[str(step)] = {
             'individuals': [i.to_dict() for i in self.all_individuals],
-            'media': [m.to_dict() for m in self.all_media]
+            # 'active_media': [m.to_dict() for m in self.active_media_list]
         }
 
     def get_media(self, id):
@@ -282,7 +294,7 @@ class Simulation():
             'y': [],
             'cov': []
         }
-        for step, val in self.simulation_values.items():
+        for step, val in self.stepwise_values.items():
             media = self.search(val['media'], 'id', id)
             if media is not None:
                 history['budgets'].append(media['budget'])
@@ -303,7 +315,7 @@ class Simulation():
             'x': [],
             'y': []
         }
-        for step, val in self.simulation_values.items():
+        for step, val in self.stepwise_values.items():
             individual = self.search(val['individuals'], 'id', id)
             history['x'].append(individual['x'])
             history['y'].append(individual['y'])
