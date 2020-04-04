@@ -15,13 +15,13 @@ default_config = {
     'meme_production_rate': 5,
     'media_reproduction_rate': 0.05,
     'media_deactivation_rate': 0.001,
-    'covariance_punishment': 0.1,
+    'covariance_punishment': 3,
     # individuals
     'individual_renewal_rate': 0.03,
     'n_individuals': 200,
-    'individual_mui': 0.002,
+    'individual_mui': 0.001,
     'individual_mcr': 5,
-    'max_reward': 0.5,
+    'max_reward': 0.4,
 }
 
 
@@ -79,27 +79,27 @@ def multiprocessing_organizer(sim_config, n_steps=10, n_sims=1, n_procs=2, verbo
                 }
                 p = executor.submit(sim_routine, **kwargs)
                 procs_list.append(p)
-            # concurrent.futures.wait(procs_list, timeout=None, return_when='ALL_COMPLETED')
+
             for p in concurrent.futures.as_completed(procs_list):
                 print(p.result())
-    else:
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            procs_list = []
-            for i in range(n_procs):
-                kwargs = {
-                    'sim_config': sim_config,
-                    'n_steps': n_steps,
-                    'n_sims': n_sims,
-                    'proc_id': i,
-                    'verbose': verbose,
-                    'save_dir': save_dir,
-                    'store_stepwise_values': store_stepwise_values,
-                }
-                p = executor.submit(sim_routine, **kwargs)
-                procs_list.append(p)
-            # concurrent.futures.wait(procs_list, timeout=None, return_when='ALL_COMPLETED')
-            for p in concurrent.futures.as_completed(procs_list):
-                print(p.result())
+    # else:
+    #     with concurrent.futures.ProcessPoolExecutor() as executor:
+    #         procs_list = []
+    #         for i in range(n_procs):
+    #             kwargs = {
+    #                 'sim_config': sim_config,
+    #                 'n_steps': n_steps,
+    #                 'n_sims': n_sims,
+    #                 'proc_id': i,
+    #                 'verbose': verbose,
+    #                 'save_dir': save_dir,
+    #                 'store_stepwise_values': store_stepwise_values,
+    #             }
+    #             p = executor.submit(sim_routine, **kwargs)
+    #             procs_list.append(p)
+    #
+    #         for p in concurrent.futures.as_completed(procs_list):
+    #             print(p.result())
 
 
 # Parse arguments and call routines
@@ -155,10 +155,14 @@ def main():
         sim_routine(sim_config=sim_config, n_steps=n_steps, n_sims=n_sims,
                     verbose=verbose, store_stepwise_values=stepwise)
     elif n_procs > 1:
-        multiprocessing_organizer(sim_config=sim_config, n_steps=n_steps, n_sims=n_sims,
+        multiprocessing_organizer(sim_config=[sim_config], n_steps=n_steps, n_sims=n_sims,
                                   n_procs=n_procs, verbose=verbose, store_stepwise_values=stepwise)
 
 
 # Called from command line
 if __name__ == '__main__':
+    """
+    Example:
+    infomemes --n_steps=1000 --n_sims=10 --n_procs=2 --stepwise=True
+    """
     main()
