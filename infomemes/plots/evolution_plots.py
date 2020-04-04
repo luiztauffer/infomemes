@@ -10,6 +10,8 @@ def make_evolution_plots(sim_file, output_html='output.html'):
     with open(fname, 'r') as f:
         file_dict = json.load(f)
 
+    all_data = file_dict['data']
+
     # Figure basics
     # vertical/horizontal lines
     vline = {
@@ -126,8 +128,8 @@ def make_evolution_plots(sim_file, output_html='output.html'):
     )
 
     frames = []
-    for step in range(len(file_dict)):
-        curr_data = file_dict[str(step)]
+    for step in range(len(all_data)):
+        curr_data = all_data[str(step)]
         individuals_dict = {
             "name": 'individuals',
             "mode": "markers",
